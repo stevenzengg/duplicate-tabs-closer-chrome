@@ -1,15 +1,36 @@
 let isEnabled = true;
 
+function preloadOpenTabs() {
+  chrome.tabs.query({}, (tabs) => {
+    const openTabs = {};
+    for (const tab of tabs) {
+      if (tab.url && isHttpUrl(tab.url)) {
+        openTabs[tab.id] = new URL(tab.url).href;
+      }
+    }
+    chrome.storage.session.set({ openTabs });
+  });
+}
+
 chrome.runtime.onStartup.addListener(() => {
-  chrome.storage.session.set({ openTabs: {} });
   chrome.storage.local.get("enabled", (data) => {
     isEnabled = data.enabled !== false;
+    if (isEnabled) {
+      preloadOpenTabs();
+    } else {
+      chrome.storage.session.set({ openTabs: {} });
+    }
   });
 });
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.get("enabled", (data) => {
     isEnabled = data.enabled !== false;
+    if (isEnabled) {
+      preloadOpenTabs();
+    } else {
+      chrome.storage.session.set({ openTabs: {} });
+    }
   });
 });
 
@@ -70,7 +91,14 @@ function isHttpUrl(url) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.toggle !== undefined) {
     isEnabled = request.toggle;
-    chrome.storage.local.set({ enabled: isEnabled });
-    sendResponse({ success: true });
+    chrome.storage.local.set({ enabled: isEnabled }, () => {
+      if (isEnabled) {
+        preloadOpenTabs();
+      } else {
+        chrome.storage.session.set({ openTabs: {} });
+      }
+      sendResponse({ success: true });
+    });
+    return true; // Indicates async response
   }
 });
