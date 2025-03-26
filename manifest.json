@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Duplicate Tabs Closer",
+  "version": "1.1",
+  "description": "Closes duplicate tabs as they open. Includes an on/off toggle.",
+  "permissions": ["tabs", "storage"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "128": "icon.png"
+    }
+  },
+  "icons": {
+    "128": "icon.png"
+  }
+}
