@@ -42,10 +42,19 @@ chrome.tabs.onCreated.addListener((tab) => {
   chrome.storage.session.get("openTabs", (data) => {
     const openTabs = data.openTabs || {};
 
-    const isDuplicate = Object.values(openTabs).includes(newUrl);
-
-    if (isDuplicate) {
-      chrome.tabs.remove(tab.id);  // Close the new duplicate tab
+    const existingTabId = Object.entries(openTabs).find(
+      ([id, url]) => url === newUrl
+    )?.[0];
+    
+    if (existingTabId) {
+      chrome.tabs.get(parseInt(existingTabId), (existingTab) => {
+        if (chrome.runtime.lastError || !existingTab) return;
+    
+        chrome.windows.update(existingTab.windowId, { focused: true });
+        chrome.tabs.update(existingTab.id, { active: true });
+    
+        chrome.tabs.remove(tab.id); // Now close the new tab
+      });
     } else {
       openTabs[tab.id] = newUrl;
       chrome.storage.session.set({ openTabs });
@@ -70,12 +79,19 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     chrome.storage.session.get("openTabs", (data) => {
       const openTabs = data.openTabs || {};
 
-      const isDuplicate = Object.entries(openTabs).some(
+      const existingTabId = Object.entries(openTabs).find(
         ([id, url]) => url === newUrl && Number(id) !== tabId
-      );
-
-      if (isDuplicate) {
-        chrome.tabs.remove(tab.id);  // Close the new tab trying to load a duplicate
+      )?.[0];
+      
+      if (existingTabId) {
+        chrome.tabs.get(parseInt(existingTabId), (existingTab) => {
+          if (chrome.runtime.lastError || !existingTab) return;
+      
+          chrome.windows.update(existingTab.windowId, { focused: true });
+          chrome.tabs.update(existingTab.id, { active: true });
+      
+          chrome.tabs.remove(tabId);
+        });
       } else {
         openTabs[tabId] = newUrl;
         chrome.storage.session.set({ openTabs });
