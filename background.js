@@ -8,7 +8,7 @@ function preloadOpenTabs() {
         openTabs[tab.id] = new URL(tab.url).href;
       }
     }
-    chrome.storage.session.set({ openTabs });
+    chrome.storage.local.set({ openTabs });
   });
 }
 
@@ -18,7 +18,7 @@ chrome.runtime.onStartup.addListener(() => {
     if (isEnabled) {
       preloadOpenTabs();
     } else {
-      chrome.storage.session.set({ openTabs: {} });
+      chrome.storage.local.set({ openTabs: {} });
     }
   });
 });
@@ -29,7 +29,7 @@ chrome.runtime.onInstalled.addListener(() => {
     if (isEnabled) {
       preloadOpenTabs();
     } else {
-      chrome.storage.session.set({ openTabs: {} });
+      chrome.storage.local.set({ openTabs: {} });
     }
   });
 });
@@ -39,7 +39,7 @@ chrome.tabs.onCreated.addListener((tab) => {
 
   const newUrl = new URL(tab.url).href;
 
-  chrome.storage.session.get("openTabs", (data) => {
+  chrome.storage.local.get("openTabs", (data) => {
     const openTabs = data.openTabs || {};
 
     const existingTabId = Object.entries(openTabs).find(
@@ -49,25 +49,25 @@ chrome.tabs.onCreated.addListener((tab) => {
     if (existingTabId) {
       chrome.tabs.get(parseInt(existingTabId), (existingTab) => {
         if (chrome.runtime.lastError || !existingTab) return;
-    
+        chrome.tabs.remove(tab.id);
+
         chrome.windows.update(existingTab.windowId, { focused: true });
         chrome.tabs.update(existingTab.id, { active: true });
     
-        chrome.tabs.remove(tab.id); // Now close the new tab
       });
     } else {
       openTabs[tab.id] = newUrl;
-      chrome.storage.session.set({ openTabs });
+      chrome.storage.local.set({ openTabs });
     }
   });
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  chrome.storage.session.get("openTabs", (data) => {
+  chrome.storage.local.get("openTabs", (data) => {
     const openTabs = data.openTabs || {};
     if (openTabs[tabId]) {
       delete openTabs[tabId];
-      chrome.storage.session.set({ openTabs });
+      chrome.storage.local.set({ openTabs });
     }
   });
 });
@@ -76,7 +76,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url && isHttpUrl(changeInfo.url) && isEnabled) {
     const newUrl = new URL(changeInfo.url).href;
 
-    chrome.storage.session.get("openTabs", (data) => {
+    chrome.storage.local.get("openTabs", (data) => {
       const openTabs = data.openTabs || {};
 
       const existingTabId = Object.entries(openTabs).find(
@@ -94,7 +94,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         });
       } else {
         openTabs[tabId] = newUrl;
-        chrome.storage.session.set({ openTabs });
+        chrome.storage.local.set({ openTabs });
       }
     });
   }
@@ -111,10 +111,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (isEnabled) {
         preloadOpenTabs();
       } else {
-        chrome.storage.session.set({ openTabs: {} });
+        chrome.storage.local.set({ openTabs: {} });
       }
       sendResponse({ success: true });
     });
     return true; // Indicates async response
   }
 });
+preloadOpenTabs();

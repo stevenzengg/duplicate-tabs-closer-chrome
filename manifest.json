@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Duplicate Tabs Closer",
-  "version": "1.1",
+  "version": "1.2",
   "description": "Closes duplicate tabs as they open. Includes an on/off toggle.",
   "permissions": ["tabs", "storage"],
   "background": {
